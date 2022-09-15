@@ -129,27 +129,6 @@ else:
     df.to_csv(planet_path + 'MODELED SPECTRA RESULTS/modeled_spectrum_results_' + planet_name + '_' + approach_name + '_' + model_name + '.txt', index=False, sep=' ', header=True)
 
 
-    ## save opacity sources contribution ##
-    _, [tau_val, source_list] = y.transit_depth()
-    source_str = ['molecules', 'cia', 'rayleigh', 'haze']
-
-    tau_list = [0] * len(source_list)
-    pct_list = [0] * len(source_list)
-    tau_total = np.mean(tau_val)
-
-    for i, s in enumerate(source_list):
-        tau_list[i] = np.mean(s)
-        pct_list[i] = (tau_list[i]/tau_total) * 100
-
-    with open(planet_path + 'HAZE FRACTIONS/haze_fraction_' + planet_name + '_' + approach_name + '_' + model_name + '.txt', 'w') as save_haze_results:
-        save_haze_results.write('mean_tau_total' + ' = ' + f'{tau_total:.3e}' + '\n\n')
-        for i, t in enumerate(tau_list):
-            save_haze_results.write('mean_tau_' + source_str[i] + ' = ' + f'{t:.3e}' + '\n')
-        save_haze_results.write('\n')
-        for i, pct in enumerate(pct_list):
-            save_haze_results.write(source_str[i] + '_percentage' + ' = ' + f'{pct:.3e}' + '\n')
-
-
     ## plot posteriors ##
     retrieved_parameter_labels = []
     posterior_ranges = []
