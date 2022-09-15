@@ -124,8 +124,6 @@ class Model:
         cloud_tau = haze_factor * integral_grid_rayleigh * xh2   # haze
         haze_tau = cloud_tau
 
-        source_list = [integral_molecules_sum, integral_grid_cia*xh2*xh2, integral_grid_rayleigh*xh2, haze_tau]
-
         tau_values_int = integral_molecules_sum + integral_grid_cia*xh2*xh2 + integral_grid_rayleigh*xh2    # array of (200,1458)
 
         factor = 2 * np.sqrt(2 * scale_height * (R0 + scale_height * np.log(p0_cgs / pressure_levels))) / kboltz / my_temp  # array of 200 points
@@ -141,14 +139,14 @@ class Model:
 
         result = 100.0 * (r / Rstar) ** 2  # return percentage transit depth
 
-        return result, [tau_val, source_list]
+        return result
 
 
     def binned_model(self):
     ## calculates average transit depth in given bins ##
 
         if self.parameter_dict['line'] == 'Off':
-            y_full, _ = self.transit_depth()
+            y_full = self.transit_depth()
             y_mean = np.zeros(self.len_x)
             for i in range(self.len_x):
                 j = int(self.bin_indices[i])
