@@ -48,16 +48,6 @@ samples = a.get_equal_weighted_posterior()[:, :-1]
 bestfit_params = a.get_best_fit()
 #stats = a.get_stats()
 
-## save posterior samples ##
-with open(planet_path + 'HISTOGRAMS/posterior_samples_' + planet_name + '_' + approach_name + '_' + model_name + '.csv', 'w') as save_posterior_samples:
-    for param in parameters:
-        save_posterior_samples.write(str(param) + ' ')
-    save_posterior_samples.write('\n')
-    for i in range(len(samples)):
-        for value in samples[i]:
-            save_posterior_samples.write(format(value, '.6e') + ' ')
-        save_posterior_samples.write('\n')
-
 
 ## set up results ##
 retrieved_results = list(map(lambda v: (v[1], v[2] - v[1], v[1] - v[0]), zip(*np.percentile(samples, [16, 50, 84], axis=0))))
