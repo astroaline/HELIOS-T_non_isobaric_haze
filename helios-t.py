@@ -50,17 +50,6 @@ bestfit_params = a.get_best_fit()
 #stats = a.get_stats()
 
 
-## save posterior samples ##
-with open(planet_path + 'POSTERIOR SAMPLES/posterior_samples_' + planet_file + '.csv', 'w') as save_posterior_samples:
-    for param in parameters:
-        save_posterior_samples.write(str(param) + ' ')
-    save_posterior_samples.write('\n')
-    for i in range(len(samples)):
-        for value in samples[i]:
-            save_posterior_samples.write(format(value, '.6e') + ' ')
-        save_posterior_samples.write('\n')
-
-
 ## set up results ##
 retrieved_results = list(map(lambda v: (v[1], v[2] - v[1], v[1] - v[0]), zip(*np.percentile(samples, [16, 50, 84], axis=0))))
 
@@ -105,7 +94,7 @@ if model_name == 'flat_line':
 else:
     ## compute model for retrieved results ##
     y = model.Model(len_x, x_full, bin_indices, new_param_dict, integral_dict)
-    yfit, _ = y.transit_depth()
+    yfit = y.transit_depth()
     yfit_binned = y.binned_model()
 
     wavenumber_min = int(1e4 / wavelength_bins[-1])
@@ -129,27 +118,6 @@ else:
     ## save modeled spectrum ##
     df = pd.DataFrame({'transit_depth': yfit, 'wavelength': x_full_plot})
     df.to_csv(planet_path + 'MODELED SPECTRA RESULTS/modeled_spectrum_results_' + planet_file + '.txt', index=False, sep=' ', header=True)
-
-
-    ## save opacity sources contribution ##
-    _, [tau_val, source_list] = y.transit_depth()
-    source_str = ['molecules', 'cia', 'rayleigh', 'cloud', 'haze']
-
-    tau_list = [0] * len(source_list)
-    pct_list = [0] * len(source_list)
-    tau_total = np.mean(tau_val)
-
-    for i, s in enumerate(source_list):
-        tau_list[i] = np.mean(s)
-        pct_list[i] = (tau_list[i]/tau_total) * 100
-
-    with open(planet_path + 'OPACITY SOURCES CONTRIBUTION/opacity_sources_contribution_' + planet_file + '.txt', 'w') as save_haze_results:
-        save_haze_results.write('mean_tau_total' + ' = ' + f'{tau_total:.3e}' + '\n\n')
-        for i, t in enumerate(tau_list):
-            save_haze_results.write('mean_tau_' + source_str[i] + ' = ' + f'{t:.3e}' + '\n')
-        save_haze_results.write('\n')
-        for i, pct in enumerate(pct_list):
-            save_haze_results.write(source_str[i] + '_percentage' + ' = ' + f'{pct:.3e}' + '\n')
 
 
     ## plot posteriors ##
