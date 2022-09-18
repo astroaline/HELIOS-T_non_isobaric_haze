@@ -20,6 +20,7 @@ start = time.time()
 print('\n\n\n' + 'now running .................... ' + planet_name + ' ' + approach_name + ' ' + model_name + '\n\n\n')
 
 planet_path = os.environ['HOME'] + '/Desktop/PhD/CASE STUDY RAYLEIGH HAZE/HELIOS-T-master_[' + approach_name + ']/planets/' + planet_name + '/'
+planet_file = planet_name + '_' + approach_name + '_' + model_name
 
 n_params = len(parameters)
 
@@ -47,6 +48,17 @@ a = pymultinest.Analyzer(outputfiles_basename=output_directory+planet_name+'_', 
 samples = a.get_equal_weighted_posterior()[:, :-1]
 bestfit_params = a.get_best_fit()
 #stats = a.get_stats()
+
+
+## save posterior samples ##
+with open(planet_path + 'POSTERIOR SAMPLES/posterior_samples_' + planet_file + '.csv', 'w') as save_posterior_samples:
+    for param in parameters:
+        save_posterior_samples.write(str(param) + ' ')
+    save_posterior_samples.write('\n')
+    for i in range(len(samples)):
+        for value in samples[i]:
+            save_posterior_samples.write(format(value, '.6e') + ' ')
+        save_posterior_samples.write('\n')
 
 
 ## set up results ##
@@ -80,7 +92,7 @@ print
 
 
 ## save retrieved results ##
-with open(planet_path + 'RETRIEVED RESULTS/retrieved_results_' + planet_name + '_' + approach_name + '_' + model_name + '.txt', 'w') as save_retrieved_results:
+with open(planet_path + 'RETRIEVED RESULTS/retrieved_results_' + planet_file + '.txt', 'w') as save_retrieved_results:
     for param in parameters:
         save_retrieved_results.write(str(param)+' = '+str(retrieved_parameters_full[param][0])+' + '+str(retrieved_parameters_full[param][1])+' - '+str(retrieved_parameters_full[param][2])+'\n')
     save_retrieved_results.write('\n')
@@ -93,7 +105,7 @@ if model_name == 'flat_line':
 else:
     ## compute model for retrieved results ##
     y = model.Model(len_x, x_full, bin_indices, new_param_dict, integral_dict)
-    yfit = y.transit_depth()
+    yfit, _ = y.transit_depth()
     yfit_binned = y.binned_model()
 
     wavenumber_min = int(1e4 / wavelength_bins[-1])
@@ -116,7 +128,28 @@ else:
 
     ## save modeled spectrum ##
     df = pd.DataFrame({'transit_depth': yfit, 'wavelength': x_full_plot})
-    df.to_csv(planet_path + 'MODELED SPECTRA RESULTS/modeled_spectrum_results_' + planet_name + '_' + approach_name + '_' + model_name + '.txt', index=False, sep=' ', header=True)
+    df.to_csv(planet_path + 'MODELED SPECTRA RESULTS/modeled_spectrum_results_' + planet_file + '.txt', index=False, sep=' ', header=True)
+
+
+    ## save opacity sources contribution ##
+    _, [tau_val, source_list] = y.transit_depth()
+    source_str = ['molecules', 'cia', 'rayleigh', 'cloud', 'haze']
+
+    tau_list = [0] * len(source_list)
+    pct_list = [0] * len(source_list)
+    tau_total = np.mean(tau_val)
+
+    for i, s in enumerate(source_list):
+        tau_list[i] = np.mean(s)
+        pct_list[i] = (tau_list[i]/tau_total) * 100
+
+    with open(planet_path + 'OPACITY SOURCES CONTRIBUTION/opacity_sources_contribution_' + planet_file + '.txt', 'w') as save_haze_results:
+        save_haze_results.write('mean_tau_total' + ' = ' + f'{tau_total:.3e}' + '\n\n')
+        for i, t in enumerate(tau_list):
+            save_haze_results.write('mean_tau_' + source_str[i] + ' = ' + f'{t:.3e}' + '\n')
+        save_haze_results.write('\n')
+        for i, pct in enumerate(pct_list):
+            save_haze_results.write(source_str[i] + '_percentage' + ' = ' + f'{pct:.3e}' + '\n')
 
 
     ## plot posteriors ##
@@ -140,14 +173,14 @@ else:
     fig2 = spectrum.spec(samples, x_full_plot, wavelength_centre, yfit, yfit_binned, ydata, wavelength_err, yerr, posterior_ranges, color_list,
                             labels=retrieved_parameter_labels, truths=plot_percentiles, max_n_ticks=3, label_kwargs={"fontsize": 34})
 
-    fig_name = 'cornerplot_' + planet_name + '_' + approach_name + '_' + model_name
+    fig_name = 'cornerplot_' + planet_file
     fig.savefig(planet_path + 'CORNERPLOTS/' + fig_name + '.png', format='png')
     fig.savefig(planet_path + 'CORNERPLOTS/' + fig_name + '.pdf', format='pdf')
     os.chdir(planet_path + 'CORNERPLOTS/')
     os.system('pdftops -eps ' + fig_name + '.pdf')
 
-    fig2_name = 'spectrum_' + planet_name + '_' + approach_name + '_' + model_name
-    fig2.savefig(planet_path + 'SPECTRA/' + fig2_name + '.png', bbox_inches='tight', pad_inches=0.5, format='png')
+    fig2_name = 'spectrum_' + planet_file
+    fig2.savefig(planet_path + 'SPECTRA/spectrum_' + planet_file + '.png', bbox_inches='tight', pad_inches=0.5, format='png')
     fig2.savefig(planet_path + 'SPECTRA/' + fig2_name + '.pdf', bbox_inches='tight', pad_inches=0.5, format='pdf')
     os.chdir(planet_path + 'SPECTRA/')
     os.system('pdftops -eps ' + fig2_name + '.pdf')

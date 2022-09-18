@@ -79,4 +79,5 @@ temperature_array_cia = np.r_[200:3025:25]          # temperature array for CIA 
 opacity_path = os.environ['HOME'] + "/Desktop/PhD/OPACITIES/"  # path to opacity binary files
 cia_path = os.environ['HOME'] + "/Desktop/PhD/HITRAN/"      # path to CIA files
 
-model_name = '1e8_rayleigh_haze'
+model_name = '1e0_rayleigh_haze'
+planet_path = os.environ["HOME"] + "/Desktop/PhD/CASE STUDY RAYLEIGH HAZE/HELIOS-T-master_[" + approach_name + "]/planets/" + planet_name + "/"

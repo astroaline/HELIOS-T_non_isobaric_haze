@@ -3,7 +3,7 @@ import load_files
 import numpy as np
 import struct
 import pdb
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator, interp1d
 
 
 def load_opacity(temperature, pressure, molecule):
@@ -75,6 +75,7 @@ def tau(p0_bar):
     pressure_array_pmin_opacities = pressure_array_opacities[np.where(pressure_array_opacities == pmin)[0][0]:]   # remove everything below pmin (this is in bars)
 
     pressure_levels_pmin_log = np.linspace(np.log10(pmin), np.log10(p0_bar), num_levels)   # log pressure array with num_levels (bars)
+    #pressure_levels_pmin_log = pressure_levels_pmin_log.astype(np.float128)
     pressure_levels_pmin = 10**pressure_levels_pmin_log
     p0_cgs = p0_bar * 1e6   # convert to cgs
 
@@ -92,33 +93,33 @@ def tau(p0_bar):
 
     for molecule in molecules:
 
-        integral_grid_molecule = np.zeros((len(temperature_array), len(pressure_levels_pmin), opacity_line_length))
+        _, x_full = load_opacity(temperature_array[0], pressure_levels_pmin[0], molecule)  # load one to get x_full
+
+        integral_grid_molecule = np.zeros((len(temperature_array), len(pressure_levels_pmin), len(x_full)))
 
         # we will integrate over pressure, for each temperature, for all wavelengths
 
         # Load integrands for all pressures
         for i, t in enumerate(temperature_array):
 
-            integrand_grid_molecule = np.zeros((len(pressure_levels_pmin), opacity_line_length))   # This will be the integrand for water
-            
-            _,x_full = load_opacity(t, pressure_levels_pmin[0], molecule)   # load one to get x_full
 
             # load opacities for all available pressures
-            opacity_grid_log = np.zeros((len(pressure_array_pmin_opacities), len(x_full)))
+            opacity_grid = np.zeros((len(pressure_array_pmin_opacities), len(x_full)))
             for j, p in enumerate(pressure_array_pmin_opacities):
-                opacity_vals,_ = load_opacity(t, p, molecule)
-                opacity_grid_log[j] = np.log10(opacity_vals)
+                opacity_grid[j],_ = load_opacity(t, p, molecule)
 
-            opacity_grid_log_all_levels = np.zeros((len(pressure_levels_pmin_log), len(x_full)))
-            for j, p in enumerate(pressure_levels_pmin_log):
-                opacity_grid_log_all_levels[j] = interpolate_opacity(p, np.log10(pressure_array_pmin_opacities), x_full, opacity_grid_log)
+            opacity_interpolator = interp1d(np.log10(pressure_array_pmin_opacities), opacity_grid, axis=0,
+                                            bounds_error=False, fill_value=(opacity_grid[0], opacity_grid[-1]),
+                                            assume_sorted=True)
+            opacity_grid_all_levels = opacity_interpolator(pressure_levels_pmin_log)
+
 
             for j, p in enumerate(pressure_levels_pmin):
 
                 p_cgs = p*1e6
 
                 pressure_sliced = pressure_levels_pmin[:j + 1]*1e6   # slice up to p and convert to cgs
-                opacity_grid_sliced = 10**opacity_grid_log_all_levels[:j+1]
+                opacity_grid_sliced = opacity_grid_all_levels[:j+1]
 
                 sigma = opacity_grid_sliced*molecular_mass_dict[molecule]   # array of (len(pressure_sliced),1458)
                 integrand = (sigma.T*pressure_sliced).T   # array of (len(pressure_sliced),1458)
@@ -127,11 +128,14 @@ def tau(p0_bar):
                 integral_value = -np.trapz(integrand, y_integral, axis=0)   # negative because we're doing the integral upside down
                 integral_grid_molecule[i, j] = integral_value
 
-        integral_dict[molecule] = integral_grid_molecule
+        integral_dict[molecule] = interp1d(temperature_array, integral_grid_molecule, axis=0,
+                                           bounds_error=False,
+                                           fill_value=(integral_grid_molecule[0], integral_grid_molecule[-1]),
+                                           assume_sorted=True)  # save interpolator instead
 
     # now we do the same for CIA
 
-    integral_cia_grid = np.zeros((len(temperature_array_cia), len(pressure_levels_pmin), opacity_line_length))
+    integral_cia_grid = np.zeros((len(temperature_array_cia), len(pressure_levels_pmin), len(x_full)))
 
     sigma_cia_full = load_cia(x_full)
 
@@ -141,14 +145,6 @@ def tau(p0_bar):
         for j, p in enumerate(pressure_levels_pmin):
 
             p_cgs = p*1e6
-
-            # ntot = p_cgs/kboltz/t   # extra number density since there are two species in each CIA
-            # sigma_cia = ntot*sigma_cia_0
-            #
-            # pressure_sliced = pressure_levels_pmin[:j + 1]*1e6   # pass in pressure values and integrand values for all pressures
-            # y_integral = np.sqrt(np.log(p_cgs/pressure_sliced))
-            # integrand_cia = (sigma_cia.T*pressure_sliced).T   # array of (len(pressure_sliced),1458)
-            # integral_value = -np.trapz(integrand_cia, y_integral, axis=0)   # calculate integral using trapezoid approximation
 
             ntot_factor = 1 / kboltz / t   # extra number density since there are two species in each CIA
             sigma_cia = ntot_factor * sigma_cia_0
@@ -182,7 +178,10 @@ def tau(p0_bar):
 
     # Here is a dictionary of integral grids, each with different associated temperature arrays !!!
 
-    integral_dict['cia'] = integral_cia_grid
+    integral_dict['cia'] = interp1d(temperature_array_cia, integral_cia_grid, axis=0,
+                                    bounds_error=False, fill_value=(integral_cia_grid[0], integral_cia_grid[-1]),
+                                    assume_sorted=True) # save interpolator again
+
     integral_dict['rayleigh'] = integral_rayleigh_grid
 
     return integral_dict, x_full
