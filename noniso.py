@@ -75,7 +75,6 @@ def tau(p0_bar):
     pressure_array_pmin_opacities = pressure_array_opacities[np.where(pressure_array_opacities == pmin)[0][0]:]   # remove everything below pmin (this is in bars)
 
     pressure_levels_pmin_log = np.linspace(np.log10(pmin), np.log10(p0_bar), num_levels)   # log pressure array with num_levels (bars)
-    #pressure_levels_pmin_log = pressure_levels_pmin_log.astype(np.float128)
     pressure_levels_pmin = 10**pressure_levels_pmin_log
     p0_cgs = p0_bar * 1e6   # convert to cgs
 
@@ -113,7 +112,7 @@ def tau(p0_bar):
                                             assume_sorted=True)
             opacity_grid_all_levels = opacity_interpolator(pressure_levels_pmin_log)
 
-
+            
             for j, p in enumerate(pressure_levels_pmin):
 
                 p_cgs = p*1e6
