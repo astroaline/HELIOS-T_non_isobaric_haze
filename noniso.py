@@ -78,15 +78,6 @@ def tau(p0_bar):
     pressure_levels_pmin = 10**pressure_levels_pmin_log
     p0_cgs = p0_bar * 1e6   # convert to cgs
 
-    wavenumber_min = int(1e4/wavelength_bins[-1])
-    wavenumber_max = int(1e4/wavelength_bins[0])
-
-    opacity_line_length = int((wavenumber_max - wavenumber_min) / res)
-    if (opacity_line_length % 2) == 0:
-        opacity_line_length = int((wavenumber_max - wavenumber_min) / res)
-    else:
-        opacity_line_length = int((wavenumber_max - wavenumber_min) / res) - 1
-
     integral_dict = {}
 
 
@@ -161,7 +152,7 @@ def tau(p0_bar):
 
     sigma_rayleigh = np.array([8.4909e-45 * (x_full ** 4)])
 
-    integral_rayleigh_grid = np.zeros((len(pressure_levels_pmin), opacity_line_length))
+    integral_rayleigh_grid = np.zeros((len(pressure_levels_pmin), len(x_full)))
 
     for j, p in enumerate(pressure_levels_pmin):
 
